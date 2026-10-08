@@ -102,7 +102,7 @@
         .checkbox-container {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 12px;
             margin-right: 15px;
         }
         .check-group {
@@ -123,6 +123,9 @@
         }
         .chk-status input[type="checkbox"]:checked {
             accent-color: #e74c3c;
+        }
+        .chk-atrapalhou input[type="checkbox"]:checked {
+            accent-color: #8e44ad;
         }
         .student-number {
             width: 35px;
@@ -149,7 +152,7 @@
         }
         textarea {
             width: 100%;
-            height: 250px;
+            height: 280px;
             padding: 10px;
             font-family: monospace;
             font-size: 14px;
@@ -231,7 +234,7 @@
     <!-- Abas de Navegação -->
     <div class="nav-tabs">
         <button type="button" class="tab-btn active" onclick="trocarAba('diario')">CHAMADA DIÁRIA</button>
-        <button type="button" class="tab-btn" onclick="trocarAba('mensal')">RELATÓRIO MENSAL DE FALTAS</button>
+        <button type="button" class="tab-btn" onclick="trocarAba('mensal')">RELATÓRIO MENSAL</button>
     </div>
 
     <!-- PAINEL DIÁRIO -->
@@ -251,7 +254,7 @@
             <div class="date-display" id="data-display"></div>
         </div>
 
-        <div class="instruction">MARQUE AS FALTAS E AS ATIVIDADES NÃO REALIZADAS DO DIA</div>
+        <div class="instruction">MARQUE AS FALTAS, ATIVIDADES NÃO REALIZADAS E OCORRÊNCIAS DO DIA</div>
 
         <div class="student-list" id="student-list"></div>
 
@@ -289,7 +292,7 @@
         <div class="output-section">
             <h2>RELATÓRIO MENSAL DETALHADO POR ESTUDANTE</h2>
             <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
-                Mapeamento das faltas e atividades não realizadas com as respetivas datas registradas.
+                Mapeamento de faltas, atividades não realizadas e registros de interferência nas aulas com datas e resumo geral.
             </p>
             <textarea id="texto-mensal" readonly placeholder="Selecione o mês para gerar o relatório..."></textarea>
             
@@ -329,6 +332,7 @@
         let turmaAtual = "6º A";
         let faltosos = [];
         let naoRealizados = [];
+        let atrapalharam = [];
 
         function configurarData() {
             const diasSemana = ['DOMINGO', 'SEGUNDA-FEIRA', 'TERÇA-FEIRA', 'QUARTA-FEIRA', 'QUINTA-FEIRA', 'SEXTA-FEIRA', 'SÁBADO'];
@@ -337,7 +341,6 @@
             const dataFormatada = dataAtual.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
             document.getElementById('data-display').innerText = `${diaSemana} - ${dataFormatada}`;
 
-            // Define o mês atual padrão no campo de seleção mensal
             const ano = dataAtual.getFullYear();
             const mes = String(dataAtual.getMonth() + 1).padStart(2, '0');
             document.getElementById('mes-select').value = `${ano}-${mes}`;
@@ -351,6 +354,7 @@
             turmaAtual = this.value;
             faltosos = [];
             naoRealizados = [];
+            atrapalharam = [];
             renderizarListaAlunos();
             atualizarCaixaTexto();
         });
@@ -389,7 +393,7 @@
                 const checkboxContainer = document.createElement('div');
                 checkboxContainer.className = 'checkbox-container';
 
-                // Checkbox de Falta
+                // Falta
                 const groupFalta = document.createElement('div');
                 groupFalta.className = 'check-group chk-falta';
                 const labelFalta = document.createElement('span');
@@ -398,7 +402,7 @@
                 chkFalta.type = 'checkbox';
                 chkFalta.id = `falta-${index}`;
 
-                // Checkbox de Atividade Não Realizada
+                // N/ Realizou
                 const groupStatus = document.createElement('div');
                 groupStatus.className = 'check-group chk-status';
                 const labelStatus = document.createElement('span');
@@ -407,14 +411,27 @@
                 chkStatus.type = 'checkbox';
                 chkStatus.id = `status-${index}`;
 
-                // Eventos com regra mútua
+                // Atrapalhou
+                const groupAtrapalhou = document.createElement('div');
+                groupAtrapalhou.className = 'check-group chk-atrapalhou';
+                const labelAtrapalhou = document.createElement('span');
+                labelAtrapalhou.innerText = "ATRAPALHOU";
+                const chkAtrapalhou = document.createElement('input');
+                chkAtrapalhou.type = 'checkbox';
+                chkAtrapalhou.id = `atrapalhou-${index}`;
+
                 chkFalta.onchange = function(e) {
                     if (e.target.checked) {
                         chkStatus.checked = false;
                         chkStatus.disabled = true;
                         atualizarListas(aluno, index, false, 'status');
+
+                        chkAtrapalhou.checked = false;
+                        chkAtrapalhou.disabled = true;
+                        atualizarListas(aluno, index, false, 'atrapalhou');
                     } else {
                         chkStatus.disabled = false;
+                        chkAtrapalhou.disabled = false;
                     }
                     atualizarListas(aluno, index, e.target.checked, 'falta');
                 };
@@ -423,14 +440,22 @@
                     atualizarListas(aluno, index, e.target.checked, 'status');
                 };
 
+                chkAtrapalhou.onchange = function(e) {
+                    atualizarListas(aluno, index, e.target.checked, 'atrapalhou');
+                };
+
                 groupFalta.appendChild(chkFalta);
                 groupFalta.appendChild(labelFalta);
 
                 groupStatus.appendChild(chkStatus);
                 groupStatus.appendChild(labelStatus);
 
+                groupAtrapalhou.appendChild(chkAtrapalhou);
+                groupAtrapalhou.appendChild(labelAtrapalhou);
+
                 checkboxContainer.appendChild(groupFalta);
                 checkboxContainer.appendChild(groupStatus);
+                checkboxContainer.appendChild(groupAtrapalhou);
 
                 const numeroDiv = document.createElement('div');
                 numeroDiv.className = 'student-number';
@@ -440,7 +465,6 @@
                 nomeDiv.className = 'student-name';
                 nomeDiv.innerText = aluno;
 
-                // Ordem: CAIXAS -> NÚMERO -> NOME
                 row.appendChild(checkboxContainer);
                 row.appendChild(numeroDiv);
                 row.appendChild(nomeDiv);
@@ -464,6 +488,13 @@
                     naoRealizados = naoRealizados.filter(n => n.nome !== nome);
                 }
                 naoRealizados.sort((a, b) => a.numero - b.numero);
+            } else if (tipo === 'atrapalhou') {
+                if (isChecked) {
+                    atrapalharam.push({ numero: index + 1, nome: nome });
+                } else {
+                    atrapalharam = atrapalharam.filter(a => a.nome !== nome);
+                }
+                atrapalharam.sort((a, b) => a.numero - b.numero);
             }
             atualizarCaixaTexto();
         }
@@ -501,30 +532,42 @@
                 });
             }
             texto += `Total Não Realizaram: ${naoRealizados.length}\n`;
+            texto += `-------------------------------------------\n\n`;
+
+            texto += `ATRAPALHOU A AULA:\n`;
+            if (atrapalharam.length === 0) {
+                texto += `Nenhuma ocorrência registrada.\n`;
+            } else {
+                atrapalharam.forEach(a => {
+                    texto += `${a.numero.toString().padStart(2, '0')} - ${a.nome}\n`;
+                });
+            }
+            texto += `Total Atrapalharam: ${atrapalharam.length}\n`;
 
             textarea.value = texto;
         }
 
-        /* SISTEMA DE ARMAZENAMENTO LOCAL */
+        /* ARMAZENAMENTO LOCAL */
         function salvarRegistroDiario() {
-            const dataHoje = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            const dataHoje = new Date().toISOString().split('T')[0];
             const chave = `registro_${turmaAtual}_${dataHoje}`;
             
             const dadosHoje = {
                 turma: turmaAtual,
                 data: dataHoje,
                 faltosos: faltosos,
-                naoRealizados: naoRealizados
+                naoRealizados: naoRealizados,
+                atrapalharam: atrapalharam
             };
 
             localStorage.setItem(chave, JSON.stringify(dadosHoje));
             mostrarToast(`Registro do dia (${dataHoje}) salvo com sucesso!`);
         }
 
-        /* GERADOR DE RELATÓRIO MENSAL POR ESTUDANTE */
+        /* RELATÓRIO MENSAL CONSOLIDADO */
         function gerarRelatorioMensal() {
             const turmaSelect = document.getElementById('turma-select-mensal').value;
-            const mesSelect = document.getElementById('mes-select').value; // Formato YYYY-MM
+            const mesSelect = document.getElementById('mes-select').value;
             const textareaMensal = document.getElementById('texto-mensal');
 
             if (!mesSelect) {
@@ -535,40 +578,50 @@
             const [ano, mes] = mesSelect.split('-');
             const alunos = turmas[turmaSelect];
             
-            // Dicionário por aluno
             let relatorioAlunos = {};
             alunos.forEach((aluno, index) => {
                 relatorioAlunos[aluno] = {
                     numero: (index + 1).toString().padStart(2, '0'),
                     faltas: [],
-                    naoRealizou: []
+                    naoRealizou: [],
+                    atrapalhou: []
                 };
             });
 
-            // Percorre todas as chaves salvas no localStorage
             for (let i = 0; i < localStorage.length; i++) {
                 const chave = localStorage.key(i);
                 if (chave.startsWith(`registro_${turmaSelect}_${ano}-${mes}`)) {
                     try {
                         const registro = JSON.parse(localStorage.getItem(chave));
-                        const diaData = registro.data.split('-')[2]; // DD
+                        const diaData = registro.data.split('-')[2];
 
-                        registro.faltosos.forEach(f => {
-                            if (relatorioAlunos[f.nome]) {
-                                relatorioAlunos[f.nome].faltas.push(diaData);
-                            }
-                        });
+                        if (registro.faltosos) {
+                            registro.faltosos.forEach(f => {
+                                if (relatorioAlunos[f.nome]) {
+                                    relatorioAlunos[f.nome].faltas.push(diaData);
+                                }
+                            });
+                        }
 
-                        registro.naoRealizados.forEach(n => {
-                            if (relatorioAlunos[n.nome]) {
-                                relatorioAlunos[n.nome].naoRealizou.push(diaData);
-                            }
-                        });
+                        if (registro.naoRealizados) {
+                            registro.naoRealizados.forEach(n => {
+                                if (relatorioAlunos[n.nome]) {
+                                    relatorioAlunos[n.nome].naoRealizou.push(diaData);
+                                }
+                            });
+                        }
+
+                        if (registro.atrapalharam) {
+                            registro.atrapalharam.forEach(a => {
+                                if (relatorioAlunos[a.nome]) {
+                                    relatorioAlunos[a.nome].atrapalhou.push(diaData);
+                                }
+                            });
+                        }
                     } catch(e) {}
                 }
             }
 
-            // Formatação do texto
             const nomesMeses = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
             const nomeMesExtenso = nomesMeses[parseInt(mes) - 1];
 
@@ -577,10 +630,18 @@
             texto += `===========================================\n\n`;
 
             let contadorOcorrencias = 0;
+            let totalFaltasTurma = 0;
+            let totalNaoRealizouTurma = 0;
+            let totalAtrapalhouTurma = 0;
 
             alunos.forEach(aluno => {
                 const dados = relatorioAlunos[aluno];
-                if (dados.faltas.length > 0 || dados.naoRealizou.length > 0) {
+                
+                totalFaltasTurma += dados.faltas.length;
+                totalNaoRealizouTurma += dados.naoRealizou.length;
+                totalAtrapalhouTurma += dados.atrapalhou.length;
+
+                if (dados.faltas.length > 0 || dados.naoRealizou.length > 0 || dados.atrapalhou.length > 0) {
                     contadorOcorrencias++;
                     texto += `${dados.numero} - ${aluno}\n`;
                     if (dados.faltas.length > 0) {
@@ -589,13 +650,23 @@
                     if (dados.naoRealizou.length > 0) {
                         texto += `   • Atividade Não Realizada (Dias): ${dados.naoRealizou.join(', ')} (Total: ${dados.naoRealizou.length})\n`;
                     }
+                    if (dados.atrapalhou.length > 0) {
+                        texto += `   • Atrapalhou a Aula (Dias): ${dados.atrapalhou.join(', ')} (Total: ${dados.atrapalhou.length})\n`;
+                    }
                     texto += `-------------------------------------------\n`;
                 }
             });
 
             if (contadorOcorrencias === 0) {
-                texto += `Nenhum registro de falta ou atividade não realizada encontrado para esta turma no mês de ${nomeMesExtenso}/${ano}.\n`;
-                texto += `\n*Lembre-se de clicar em "SALVAR REGISTRO DE HOJE" na aba de chamada diária para gravar os dados do mês.`;
+                texto += `Nenhum registro de falta, atividade não realizada ou ocorrência de aula encontrado para esta turma no mês de ${nomeMesExtenso}/${ano}.\n\n`;
+                texto += `*Lembre-se de clicar em "SALVAR REGISTRO DE HOJE" na aba de chamada diária para gravar os dados do mês.`;
+            } else {
+                texto += `\n===========================================\n`;
+                texto += `RESUMO GERAL DA TURMA NO MÊS:\n`;
+                texto += `• Total de Faltas Registradas: ${totalFaltasTurma}\n`;
+                texto += `• Total de Atividades Não Realizadas: ${totalNaoRealizouTurma}\n`;
+                texto += `• Total de Ocorrências (Atrapalhou a Aula): ${totalAtrapalhouTurma}\n`;
+                texto += `===========================================\n`;
             }
 
             textareaMensal.value = texto;
@@ -647,7 +718,7 @@
                 return;
             }
 
-            const assunto = encodeURIComponent(`Relatório Mensal de Faltas e Atividades - Turma ${turmaSelect} (${mesSelect})`);
+            const assunto = encodeURIComponent(`Relatório Mensal de Faltas, Atividades e Ocorrências - Turma ${turmaSelect} (${mesSelect})`);
             const corpo = encodeURIComponent(textoMensal);
 
             const mailtoUrl = `mailto:${EMAIL_DESTINO}?subject=${assunto}&body=${corpo}`;
